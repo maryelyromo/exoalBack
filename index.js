@@ -2,10 +2,10 @@ const express = require("express");
 const app = express();
 const puerto=3000;
 const mysql=require("mysql");
-const {validarCuenta}=require("./consultas");
+const {validarCuenta,crearUsuario}=require("./consultas");
 const cors=require('cors');
 const jwt = require('jsonwebtoken');
-const SECRET_KEY = "tu_clave_secreta";
+const SECRET_KEY = "tu_clave_secreta_aqui"; // Cambia esto por una clave segura
 const bodyparse=require("body-parser");
 
 
@@ -17,7 +17,7 @@ const connection =mysql.createConnection({
     host:"localhost",
     user:"root",
     password:"",
-    database:"proyecto_exoal",
+    database:"exoal",
 });
 
 connection.connect((err)=>{
@@ -29,15 +29,15 @@ app.get("/",(req,res)=>{
 })
 
 app.post('/login', (req, res) => {
-    const { numemp, contrasena } = req.body;
+    const { id, password } = req.body;
 
-    if (!numemp || !contrasena) {
+    if (!id || !password) {
         return res.status(400).json({ error: "Número de empleado y contraseña son requeridos" });
     }
 
-    console.log("Intento de login para:", numemp);
+    console.log("Intento de login para:", id);
 
-    validarCuenta(connection, numemp, contrasena, (err, usuario) => {
+    validarCuenta(connection, id, password, (err, usuario) => {
         if (err) {
             console.error("Error en autenticación:", err.error);
             return res.status(401).json(err); // 401 Unauthorized
@@ -48,9 +48,9 @@ app.post('/login', (req, res) => {
         // ✅ Generar JWT con datos básicos del usuario
         const token = jwt.sign(
             {
-                num_emp: usuario.num_emp,
+                id_usuario: usuario.id_usuario,
                 nombre: usuario.nombre,
-                userLevel: usuario.userLevel
+                permisos: usuario.permisos
             },
             SECRET_KEY,
             { expiresIn: '2h' } // expira en 2 horas
@@ -61,12 +61,30 @@ app.post('/login', (req, res) => {
             message: "Autenticación exitosa",
             token,  
             usuario: {
-                num_emp: usuario.num_emp,
+                id_usuario: usuario.id_usuario,
                 nombre: usuario.nombre,
-                userLevel: usuario.userLevel
+                permisos: usuario.permisos
             }
         });
     });
+});
+
+app.post('/crearuser', (req, res) => {
+  // Extraemos todos los campos necesarios desde el body
+  const { contra, nombre, apellidos, telefono, correo, grado, cargo, area_adscripcion } = req.body;
+
+  // Validamos que los campos obligatorios estén presentes
+  if (!contra || !nombre || !apellidos || !telefono || !correo || !grado || !cargo || !area_adscripcion) {
+    return res.status(400).json({ error: "Faltan campos requeridos" });
+  }
+
+  // Llama a la función que inserta en la base de datos
+  crearUsuario(connection, contra, nombre, apellidos, telefono, correo, grado, cargo, area_adscripcion, (err, result) => {
+    if (err) {
+      return res.status(500).json(err);
+    }
+    res.status(201).json({ message: "Usuario creado exitosamente", id: result.id });
+  });
 });
 
 app.listen(puerto, () => {
