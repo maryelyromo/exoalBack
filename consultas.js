@@ -49,4 +49,88 @@ function crearUsuario(connection, contra, nombre, apellidos, telefono, correo, g
     });
 }
 
-module.exports={validarCuenta, crearUsuario};
+function insertarProyecto(connection, data, callback) {
+  let{
+    DISCIPLINA,
+    NAME_PROYECT,
+    JUSTIFICACION,
+    ANTECEDENTES,
+    OBJ_GRAL,
+    OBJ_ESP,
+    ENTREGABLES,
+    MONTO,
+    PROGAMA,
+    ADJUNTAR,
+    INFO_ADD,
+    ESTADO,
+    ID_REVISOR,
+    ID_SUSTENTANTE
+  } = data;
+
+  const sql = `
+    INSERT INTO proyecto (
+      DISCIPLINA, NAME_PROYECT, JUSTIFICACION, ANTECEDENTES,
+      OBJ_GRAL, OBJ_ESP, ENTREGABLES, MONTO,
+      PROGAMA, ADJUNTAR, INFO_ADD, ESTADO, ID_REVISOR, ID_SUSTENTANTE
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  let values = [
+    DISCIPLINA,
+    NAME_PROYECT,
+    JUSTIFICACION,
+    ANTECEDENTES,
+    OBJ_GRAL,
+    OBJ_ESP,
+    ENTREGABLES,
+    MONTO,
+    PROGAMA,
+    ADJUNTAR,
+    INFO_ADD,
+    ESTADO = 'Pendiente', 
+    ID_REVISOR = null,
+    ID_SUSTENTANTE
+  ];
+
+  connection.query(sql, values, (err, result) => {
+    if (err) {
+      callback(err);
+    } else {
+      callback(null, result.insertId);
+    }
+  });
+}
+
+function valProyecto(connection, ID_SUSTENTANTE, callback) {
+    // Funcion que cuenta los proyectos activos de un usuario, en caso de ser 0 el usuario puede crear un nuevo proyecto
+    const sql = `SELECT COUNT(*) AS proyectos_pendientes
+            FROM proyecto
+            WHERE ID_SUSTENTANTE = ?
+            AND ESTADO = 'Pendiente';`;
+    connection.query(sql, [ID_SUSTENTANTE], (err, results) => {
+        if (err) {
+            console.error("Error al contar proyectos pendientes:", err);
+            return callback(err);
+        }
+        const count = results[0].proyectos_pendientes;
+        callback(null, count);
+    });
+}
+
+function proyecto(connection, ID_SUSTENTANTE, callback) {
+    // Funcion que obtiene los datos de un proyecto por su ID
+    const sql = `SELECT * FROM proyecto WHERE ID_SUSTENTANTE = ? and ESTADO = 'Pendiente'`;
+
+    connection.query(sql, [ID_SUSTENTANTE], (err, results) => {
+        if (err) {
+            console.error("Error al obtener proyecto:", err);
+            return callback(err);
+        }
+        if (results.length === 0) {
+            return callback({ error: "Proyecto no encontrado" });
+        }
+        callback(null, results[0]);
+    });
+}
+
+module.exports={validarCuenta, crearUsuario, insertarProyecto, valProyecto, proyecto};

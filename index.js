@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const puerto=3000;
 const mysql=require("mysql");
-const {validarCuenta,crearUsuario}=require("./consultas");
+const {validarCuenta,crearUsuario,insertarProyecto,valProyecto,proyecto}=require("./consultas");
 const cors=require('cors');
 const jwt = require('jsonwebtoken');
 const SECRET_KEY = "tu_clave_secreta_aqui"; // Cambia esto por una clave segura
@@ -86,6 +86,58 @@ app.post('/crearuser', (req, res) => {
     res.status(201).json({ message: "Usuario creado exitosamente", id: result.id });
   });
 });
+
+app.post('/nuevoProyecto', (req, res) => {
+  const proyecto = req.body;
+  // Validar si ya tiene un proyecto pendiente
+  valProyecto(connection, proyecto.ID_SUSTENTANTE, (err, count) => {
+    if (err) {
+      console.error('❌ Ya tienes un proyecto activo. Debes cerrarlo antes de crear uno nuevo.', err);
+      return res.status(500).json({ error: 'Error al validar proyecto existente' });
+    }
+    if (count > 0) {
+      return res.status(400).json({ error: '❌ Ya tienes un proyecto activo. Debes cerrarlo antes de crear uno nuevo.' });
+    }
+    //Insertar si no hay proyecto pendiente
+    insertarProyecto(connection, proyecto, (err, insertId) => {
+      if (err) {
+        console.error('❌ Error al insertar proyecto:', err);
+        return res.status(500).json({ error: 'Error al insertar proyecto' });
+      }
+      res.status(200).json({ message: '✔️ Proyecto creado correctamente', id: insertId });
+    });
+  });
+});
+
+app.post('/proyectoActivo', (req, res) => {
+  const { ID_SUSTENTANTE } = req.body;
+
+  valProyecto(connection, ID_SUSTENTANTE, (err, count) => {
+    if (err) {
+      return res.status(500).json({ error: ' ❌ Error al validar proyecto' });
+    }
+    if (count > 0) {
+      return res.status(400).json({ error: ' ❌ Ya tienes un proyecto activo' });
+    }
+    res.status(200).json({ message: '✔️ Puedes crear un nuevo proyecto' });
+  });
+});
+
+app.post('/data/proyecto', (req, res) => {
+  const { ID_SUSTENTANTE } = req.body;
+  if (!ID_SUSTENTANTE) {
+    return res.status(400).json({ error: '❌ ID de sustentante es requerido' });
+  }
+
+  proyecto(connection, ID_SUSTENTANTE, (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: '❌ Error al obtener datos del proyecto' });
+    }
+    res.status(200).json({ message: '✔️ Datos del proyecto', data });
+  });
+});
+
+
 
 app.listen(puerto, () => {
   console.log(`Servidor corriendo en el puerto `+puerto);
