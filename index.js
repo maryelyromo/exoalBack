@@ -3,6 +3,7 @@ const app = express();
 const puerto=3000;
 const mysql=require("mysql");
 const {validarCuenta,crearUsuario,insertarProyecto,valProyecto,proyecto}=require("./consultas");
+const {obtenerProyectos,asignarRevisor,revisorActivo} = require("./revisor");
 const cors=require('cors');
 const jwt = require('jsonwebtoken');
 const SECRET_KEY = "tu_clave_secreta_aqui"; // Cambia esto por una clave segura
@@ -137,8 +138,46 @@ app.post('/data/proyecto', (req, res) => {
   });
 });
 
+app.get('/data/proyectos', (req, res) => {
+  obtenerProyectos(connection, (err, callback) => {
+      if (err) {
+          return res.status(500).json({ error: '❌ Error al obtener proyectos' });
+      }
+      res.status(200).json(callback);
+  });
+});
 
+app.post('/asignarRevisor', (req, res) => {
+  const { id_revisor, id_proyecto } = req.body;
 
+  if (!id_revisor || !id_proyecto) {
+    return res.status(400).json({ error: '❌ ID de revisor y ID de proyecto son requeridos' });
+  }
+
+  asignarRevisor(connection, id_revisor, id_proyecto, (err, result) => {
+    if (err) {
+      console.error('Error al asignar revisor:', err);
+      return res.status(500).json({ error: '❌ Error interno al asignar revisor' });
+    }
+    res.status(200).json({ message: '✔️ Revisor asignado correctamente', result });
+  });
+});
+
+app.post('/revisorActivo', (req, res) => {
+  const { id_revisor } = req.body;
+
+  if (!id_revisor) {
+    return res.status(400).json({ error: '❌ ID de revisor es requerido' });
+  }
+
+  revisorActivo(connection, id_revisor, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: '❌ Error al verificar disponibilidad del revisor' });
+    }
+
+    res.status(200).json(result);
+  });
+});
 app.listen(puerto, () => {
   console.log(`Servidor corriendo en el puerto `+puerto);
 });

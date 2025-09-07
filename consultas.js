@@ -95,9 +95,15 @@ function insertarProyecto(connection, data, callback) {
   connection.query(sql, values, (err, result) => {
     if (err) {
       callback(err);
-    } else {
-      callback(null, result.insertId);
     }
+
+    const queryupdate = `UPDATE usuarios SET ID_PROYECTO = ? WHERE ID_USUARIO = ?`;
+    connection.query(queryupdate, [result.insertId, ID_SUSTENTANTE], (err, res) => {
+      if (err) {
+        return callback(err);
+      }
+      callback(null, { success: true });
+    });
   });
 }
 
