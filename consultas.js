@@ -112,12 +112,13 @@ function valProyecto(connection, ID_SUSTENTANTE, callback) {
     const sql = `SELECT COUNT(*) AS proyectos_pendientes
             FROM proyecto
             WHERE ID_SUSTENTANTE = ?
-            AND ESTADO = 'Pendiente';`;
+            AND (ESTADO = 'Pendiente' OR ESTADO = 'En espera' OR ESTADO = 'Revisado');`;
     connection.query(sql, [ID_SUSTENTANTE], (err, results) => {
         if (err) {
             console.error("Error al contar proyectos pendientes:", err);
             return callback(err);
         }
+        //console.log("Proyectos pendientes encontrados:", results[0].proyectos_pendientes);
         const count = results[0].proyectos_pendientes;
         callback(null, count);
     });
@@ -125,7 +126,7 @@ function valProyecto(connection, ID_SUSTENTANTE, callback) {
 
 function proyecto(connection, ID_SUSTENTANTE, callback) {
     // Funcion que obtiene los datos de un proyecto por su ID
-    const sql = `SELECT * FROM proyecto WHERE ID_SUSTENTANTE = ? and ESTADO = 'Pendiente'`;
+    const sql = `SELECT * FROM proyecto WHERE ID_SUSTENTANTE = ? AND (ESTADO = 'Pendiente' OR ESTADO = 'En espera' OR ESTADO = 'Revisado') LIMIT 1`;
 
     connection.query(sql, [ID_SUSTENTANTE], (err, results) => {
         if (err) {

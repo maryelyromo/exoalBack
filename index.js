@@ -3,7 +3,7 @@ const app = express();
 const puerto=3000;
 const mysql=require("mysql");
 const {validarCuenta,crearUsuario,insertarProyecto,valProyecto,proyecto}=require("./consultas");
-const {obtenerProyectos,asignarRevisor,revisorActivo} = require("./revisor");
+const {obtenerProyectos,asignarRevisor,revisorActivo,proyectoarevisar,proyectoRevisado} = require("./revisor");
 const cors=require('cors');
 const jwt = require('jsonwebtoken');
 const SECRET_KEY = "tu_clave_secreta_aqui"; // Cambia esto por una clave segura
@@ -178,6 +178,45 @@ app.post('/revisorActivo', (req, res) => {
     res.status(200).json(result);
   });
 });
+
+app.post('/data/proyectoarevisar', (req, res) => {
+  const { id_revisor } = req.body;
+
+  if (!id_revisor) {
+    return res.status(400).json({ error: '❌ ID de revisor es requerido' });
+  }
+
+  proyectoarevisar(connection, id_revisor, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: '❌ Error al obtener proyectos a revisar' });
+    }
+
+    res.status(200).json(result);
+  });
+});
+
+app.post('/data/proyectoRevisado', (req, res) => {
+  const data = {
+    id_proyecto: req.body.ID_PROYECTO,
+    relacion: req.body.RELACION,
+    extension: req.body.EXTENSION,
+    diseno: req.body.DISENO,
+    riesgos: req.body.RIESGOS,
+    forma: req.body.FORMA,
+    analisis: req.body.ANALISIS,
+    recomendaciones: req.body.RECOMENDACIONES,
+    id_revisor: req.body.ID_REVISOR
+  };
+
+  proyectoRevisado(connection, data, (err, result) => {
+    if (err) {
+      console.error('❌ Error al procesar revisión:', err);
+      return res.status(500).json({ success: false, message: 'Error al revisar proyecto', error: err });
+    }
+    res.status(200).json({ success: true, message: 'Proyecto revisado y actualizado correctamente' });
+  });
+});
+
 app.listen(puerto, () => {
   console.log(`Servidor corriendo en el puerto `+puerto);
 });
