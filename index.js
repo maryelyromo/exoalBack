@@ -2,8 +2,9 @@ const express = require("express");
 const app = express();
 const puerto=3000;
 const mysql=require("mysql");
-const {validarCuenta,crearUsuario,insertarProyecto,valProyecto,proyecto}=require("./consultas");
-const {obtenerProyectos,asignarRevisor,revisorActivo,proyectoarevisar,proyectoRevisado} = require("./revisor");
+const {validarCuenta,crearUsuario,insertarProyecto,valProyecto,proyecto, obtenerFinalizados}=require("./controllers/consultas");
+const {obtenerProyectos,asignarRevisor,revisorActivo,proyectoarevisar,proyectoRevisado} = require("./controllers/revisor");
+const {proyectosEnEspera ,actualizarEstadoProyecto,updateUserStatus,getUsers,proyectosFinalizados,cambioPassword}=require("./controllers/admin");
 const cors=require('cors');
 const jwt = require('jsonwebtoken');
 const SECRET_KEY = "tu_clave_secreta_aqui"; // Cambia esto por una clave segura
@@ -217,6 +218,102 @@ app.post('/data/proyectoRevisado', (req, res) => {
   });
 });
 
+app.get('/admin/enespera', (req, res) => {
+    proyectosEnEspera(connection, (result) => {
+        res.status(200).json(result);
+    });
+});
+
+app.post('/admin/updateStatus', (req, res) => {
+    const { id_proyecto, status } = req.body;
+
+    if (!id_proyecto || !status) {
+        return res.status(400).json({ error: '❌ ID de proyecto y estado son requeridos' });
+    }
+
+    actualizarEstadoProyecto(connection, id_proyecto, status, (err, result) => {
+        if (err) {
+            console.error('❌ Error al actualizar estado del proyecto:', err);
+            return res.status(500).json({ error: '❌ Error interno al actualizar estado del proyecto' });
+        }
+        res.status(200).json({ message: '✔️ Estado del proyecto actualizado correctamente', result });
+    });
+});
+
+app.post('/admin/updateUserStatus', (req, res) => {
+    const { id_usuario, permiso } = req.body;
+
+    if (!id_usuario || !permiso) {
+        return res.status(400).json({ error: '❌ ID de usuario y permiso son requeridos' });
+    }
+
+    updateUserStatus(connection, id_usuario, permiso, (err, result) => {
+        if (err) {
+            console.error('❌ Error al actualizar permiso de usuario:', err);
+            return res.status(500).json({ error: '❌ Error interno al actualizar permiso de usuario' });
+        }
+        res.status(200).json({ message: '✔️ Permiso de usuario actualizado correctamente', result });
+    });
+});
+
+app.get('/admin/getUsers', (req, res) => {
+    getUsers(connection, (err, result) => {
+        if (err) {
+            console.error('❌ Error al obtener usuarios:', err);
+            return res.status(500).json({ error: '❌ Error interno al obtener usuarios' });
+        }
+        res.status(200).json(result);
+    });
+});
+
+app.post('/data/misProyectos', (req, res) => {
+    const { ID_SUSTENTANTE } = req.body;
+
+    if (!ID_SUSTENTANTE || isNaN(ID_SUSTENTANTE)) {
+        return res.status(400).json({ error: 'ID_SUSTENTANTE inválido o faltante' });
+    }
+
+    obtenerFinalizados(connection, ID_SUSTENTANTE, (err, proyectos) => {
+        if (err) {
+            // Error real del servidor o BD
+            return res.status(500).json({ error: 'Error al obtener proyectos err1' });
+        }
+
+        if (proyectos.error) {
+            // No se encontraron proyectos o mensaje no crítico
+            return res.status(404).json(proyectos);
+        }
+
+        // Todo bien, se regresan los proyectos
+        res.status(200).json(proyectos);
+    });
+});
+
+app.get('/admin/proyectosFinalizados', (req, res) => {
+    proyectosFinalizados(connection, (result) => {
+        res.status(200).json(result);
+    });
+  });
+
+app.post('/admin/cambioPass',(req,res)=>{
+    const { id_usuario, nueva_contra, antigua_contra } = req.body;
+    console.log(id_usuario,nueva_contra,antigua_contra);
+    if (!id_usuario || !nueva_contra || !antigua_contra) {
+        return res.status(400).json({ error: '❌ ID de usuario, nueva contraseña y antigua contraseña son requeridos' });
+    }
+    if(nueva_contra===antigua_contra){
+        return res.status(400).json({ error: '❌ La nueva contraseña no puede ser igual a la antigua' });
+    }
+    cambioPassword(connection, id_usuario, nueva_contra, (err, result) => {
+        if (err) {
+            console.error('❌ Error al cambiar la contraseña:', err);
+            return res.status(500).json({ error: '❌ Error interno al cambiar la contraseña' });
+        }
+        console.log("Se ha actualizado contra");
+        res.status(200).json({ message: '✔️ Contraseña actualizada correctamente', result });
+        
+    });
+});
 app.listen(puerto, () => {
   console.log(`Servidor corriendo en el puerto `+puerto);
 });

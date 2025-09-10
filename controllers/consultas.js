@@ -140,4 +140,39 @@ function proyecto(connection, ID_SUSTENTANTE, callback) {
     });
 }
 
-module.exports={validarCuenta, crearUsuario, insertarProyecto, valProyecto, proyecto};
+function obtenerFinalizados(connection, ID_SUSTENTANTE, callbak) {
+    const sql = 'SELECT * FROM proyecto WHERE (estado="Aceptado" OR estado="Rechazado") AND ID_SUSTENTANTE = ?';
+    connection.query(sql, [ID_SUSTENTANTE], (err, result) => {
+        if (err) {
+            console.error('❌ Error al obtener proyectos:', err);
+            return callbak(err);  // primer parámetro error, segundo opcional
+        }
+
+        if (!result || result.length === 0) {
+            console.error('❌ No hay proyectos en espera length 0');
+            return callbak(null, { error: '❌ No hay proyectos en espera' });  // sin error, pero avisas que no hay datos
+        }
+
+        const criterio = "SELECT * FROM criterios WHERE ID_PROYECTO IN (?)";
+        const ids = result.map(proyecto => proyecto.ID_PROYECTO);
+
+        connection.query(criterio, [ids], (err, criterios) => {
+            if (err) {
+                console.error('❌ Error al obtener criterios:', err);
+                return callbak(err);
+            }
+
+            const proyectosConCriterios = result.map(proyecto => {
+                return {
+                    ...proyecto,
+                    criterios: criterios.filter(c => c.ID_PROYECTO === proyecto.ID_PROYECTO)
+                };
+            });
+
+            // Aquí el primer parámetro es null porque no hay error
+            callbak(null, proyectosConCriterios);
+        });
+    });
+}
+
+module.exports = { validarCuenta, crearUsuario, insertarProyecto, valProyecto, proyecto, obtenerFinalizados };
