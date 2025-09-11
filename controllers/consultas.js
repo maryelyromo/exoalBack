@@ -18,6 +18,9 @@ function validarCuenta(connection, numemp, contrasena, callback) {
         if (results.length === 0) {
             return callback({ error: "Credenciales inválidas" });
         }
+        if(results[0].PERMISOS==='Bloqueado'){
+            return callback({ error: "Usuario bloqueado"});
+        }
         
         // Devuelve solo los datos necesarios, excluyendo la contraseña
         const usuario = {
