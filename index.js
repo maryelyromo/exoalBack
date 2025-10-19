@@ -12,6 +12,7 @@ const bodyparse=require("body-parser");
 
 
 app.use(cors());
+// Parsea el cuerpo de las peticiones en formato JSON.
 app.use(bodyparse.json());
 app.use(bodyparse.urlencoded({extended:false}));
 
@@ -34,7 +35,7 @@ app.post('/login', (req, res) => {
     const { id, password } = req.body;
 
     if (!id || !password) {
-        return res.status(400).json({ error: "Número de empleado y contraseña son requeridos" });
+        return res.status(400).json({ error: "ID y contraseña son requeridos" });
     }
 
     console.log("Intento de login para:", id);
@@ -61,7 +62,7 @@ app.post('/login', (req, res) => {
         res.status(200).json({
             success: true,
             message: "Autenticación exitosa",
-            token,  
+            token,
             usuario: {
                 id_usuario: usuario.id_usuario,
                 nombre: usuario.nombre,
@@ -71,6 +72,22 @@ app.post('/login', (req, res) => {
     });
 });
 
+/**
+ * @api {post} /crearuser Creación de un nuevo usuario
+ * @apiDescription Inserta un nuevo usuario en la base de datos.
+ * @apiParam {String} contra Contraseña del usuario.
+ * @apiParam {String} nombre Nombre del usuario.
+ * @apiParam {String} apellidos Apellidos del usuario.
+ * @apiParam {Number} telefono Teléfono del usuario.
+ * @apiParam {String} correo Correo electrónico del usuario.
+ * @apiParam {Number} grado Grado de estudio o nivel del usuario.
+ * @apiParam {String} cargo Cargo del usuario.
+ * @apiParam {String} area_adscripcion Área de adscripción.
+ * @apiSuccess (201) {String} message Mensaje de confirmación.
+ * @apiSuccess (201) {Number} id ID del usuario creado.
+ * @apiError (400) {String} error Faltan campos requeridos.
+ * @apiError (500) {String} error Error interno al crear el usuario.
+ */
 app.post('/crearuser', (req, res) => {
   // Extraemos todos los campos necesarios desde el body
   const { contra, nombre, apellidos, telefono, correo, grado, cargo, area_adscripcion } = req.body;
@@ -89,6 +106,15 @@ app.post('/crearuser', (req, res) => {
   });
 });
 
+/**
+ * @api {post} /nuevoProyecto Creación de un nuevo proyecto
+ * @apiDescription Inserta un nuevo proyecto si el sustentante no tiene uno activo.
+ * @apiParam {Object} proyecto Datos del proyecto.
+ * @apiSuccess {String} message Mensaje de confirmación.
+ * @apiSuccess {Number} id ID del proyecto creado.
+ * @apiError (400) {String} error El usuario ya tiene un proyecto activo.
+ * @apiError (500) {String} error Error interno al validar o insertar el proyecto.
+ */
 app.post('/nuevoProyecto', (req, res) => {
   const proyecto = req.body;
   // Validar si ya tiene un proyecto pendiente
@@ -111,6 +137,14 @@ app.post('/nuevoProyecto', (req, res) => {
   });
 });
 
+/**
+ * @api {post} /proyectoActivo Verificación de proyecto activo
+ * @apiDescription Verifica si un sustentante puede crear un nuevo proyecto.
+ * @apiParam {Number} ID_SUSTENTANTE ID del usuario sustentante.
+ * @apiSuccess {String} message Mensaje de confirmación.
+ * @apiError (400) {String} error El usuario ya tiene un proyecto activo.
+ * @apiError (500) {String} error Error interno al validar el proyecto.
+ */
 app.post('/proyectoActivo', (req, res) => {
   const { ID_SUSTENTANTE } = req.body;
 
@@ -125,6 +159,15 @@ app.post('/proyectoActivo', (req, res) => {
   });
 });
 
+/**
+ * @api {post} /data/proyecto Obtención de datos de un proyecto activo
+ * @apiDescription Obtiene los datos de un proyecto pendiente, en espera o revisado de un sustentante.
+ * @apiParam {Number} ID_SUSTENTANTE ID del usuario sustentante.
+ * @apiSuccess {String} message Mensaje de confirmación.
+ * @apiSuccess {Object} data Datos del proyecto.
+ * @apiError (400) {String} error ID de sustentante es requerido.
+ * @apiError (500) {String} error Error interno al obtener datos del proyecto.
+ */
 app.post('/data/proyecto', (req, res) => {
   const { ID_SUSTENTANTE } = req.body;
   if (!ID_SUSTENTANTE) {
@@ -139,6 +182,12 @@ app.post('/data/proyecto', (req, res) => {
   });
 });
 
+/**
+ * @api {get} /data/proyectos Obtención de todos los proyectos pendientes
+ * @apiDescription Obtiene una lista de todos los proyectos con estado "Pendiente".
+ * @apiSuccess {Object[]} proyectos Lista de proyectos.
+ * @apiError (500) {String} error Error interno al obtener proyectos.
+ */
 app.get('/data/proyectos', (req, res) => {
   obtenerProyectos(connection, (err, callback) => {
       if (err) {
@@ -148,6 +197,15 @@ app.get('/data/proyectos', (req, res) => {
   });
 });
 
+/**
+ * @api {post} /asignarRevisor Asignación de revisor a un proyecto
+ * @apiDescription Asigna un revisor disponible a un proyecto pendiente.
+ * @apiParam {Number} id_revisor ID del revisor.
+ * @apiParam {Number} id_proyecto ID del proyecto.
+ * @apiSuccess {String} message Mensaje de confirmación.
+ * @apiError (400) {String} error ID de revisor y ID de proyecto son requeridos.
+ * @apiError (500) {String} error Error interno al asignar revisor.
+ */
 app.post('/asignarRevisor', (req, res) => {
   const { id_revisor, id_proyecto } = req.body;
 
@@ -164,6 +222,15 @@ app.post('/asignarRevisor', (req, res) => {
   });
 });
 
+/**
+ * @api {post} /revisorActivo Verificación de revisor activo
+ * @apiDescription Verifica si un revisor está disponible (no tiene un proyecto asignado).
+ * @apiParam {Number} id_revisor ID del revisor.
+ * @apiSuccess {Boolean} disponible Estado de disponibilidad.
+ * @apiSuccess {String} message Mensaje de confirmación.
+ * @apiError (400) {String} error ID de revisor es requerido.
+ * @apiError (500) {String} error Error interno al verificar disponibilidad.
+ */
 app.post('/revisorActivo', (req, res) => {
   const { id_revisor } = req.body;
 
@@ -180,6 +247,14 @@ app.post('/revisorActivo', (req, res) => {
   });
 });
 
+/**
+ * @api {post} /data/proyectoarevisar Obtención de proyecto para revisar
+ * @apiDescription Obtiene el proyecto asignado a un revisor.
+ * @apiParam {Number} id_revisor ID del revisor.
+ * @apiSuccess {Object[]} proyectos Lista de proyectos asignados.
+ * @apiError (400) {String} error ID de revisor es requerido.
+ * @apiError (500) {String} error Error interno al obtener proyectos.
+ */
 app.post('/data/proyectoarevisar', (req, res) => {
   const { id_revisor } = req.body;
 
@@ -219,8 +294,24 @@ app.post('/data/proyectoRevisado', (req, res) => {
 });
 
 app.get('/admin/enespera', (req, res) => {
-    proyectosEnEspera(connection, (result) => {
+    proyectosEnEspera(connection, (err, result) => {
+        // Manejo de errores de la Base de Datos o de la función
+        if (err) {
+            console.error('❌ Error en el endpoint /api/admin/proyectos-en-espera:', err);
+            // Se devuelve un error 500 (Error Interno del Servidor) en caso de fallo de BD.
+            return res.status(500).json({ 
+                mensaje: 'Error interno del servidor al obtener proyectos',
+                detalle: err.message || err 
+            });
+        }
+        
+        if (result && result.error) {
+            return res.status(200).json([]);
+        }
+        
         res.status(200).json(result);
+        
+        console.log(`✅ ${result.length} proyectos en espera enviados.`);
     });
 });
 
@@ -276,7 +367,7 @@ app.post('/data/misProyectos', (req, res) => {
     obtenerFinalizados(connection, ID_SUSTENTANTE, (err, proyectos) => {
         if (err) {
             // Error real del servidor o BD
-            return res.status(500).json({ error: 'Error al obtener proyectos err1' });
+            return res.status(500).json({ error: 'Error al obtener proyectos error' });
         }
 
         if (proyectos.error) {
@@ -290,10 +381,21 @@ app.post('/data/misProyectos', (req, res) => {
 });
 
 app.get('/admin/proyectosFinalizados', (req, res) => {
-    proyectosFinalizados(connection, (result) => {
-        res.status(200).json(result);
+    // La función ahora usa la función corregida (proyectosEnEspera)
+    proyectosFinalizados(connection, (err, result) => {
+        // 1. Manejo de error de base de datos
+        if (err) {
+            console.error('Error al responder la API /admin/proyectosFinalizados:', err);
+            // Devolver un error 500 si la BD falla
+            return res.status(500).json({ 
+                mensaje: 'Error interno del servidor al consultar la BD', 
+                error: err.message 
+            });
+        }
+
+        res.status(200).json(result); 
     });
-  });
+});
 
 app.post('/admin/cambioPass',(req,res)=>{
     const { id_usuario, nueva_contra, antigua_contra } = req.body;
